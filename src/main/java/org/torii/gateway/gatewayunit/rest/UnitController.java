@@ -24,15 +24,24 @@ public class UnitController {
     private final List<UpstreamService> upstreamUpstreamServices;
 
     @RequestMapping(path = "/{serviceRef}/**", method = {GET, POST, PUT, DELETE})
-    public Mono<ResponseEntity<String>> handleAllMethods(ServerHttpRequest request,
-                                                         @RequestBody(required = false) Mono<String> requestBody,
-                                                         @PathVariable String serviceRef) {
+    public Mono<ResponseEntity<String>> handleAllMethods(
+            ServerHttpRequest request,
+            @RequestBody(required = false) Mono<String> requestBody,
+            @PathVariable String serviceRef
+    ) {
 
-        if (upstreamUpstreamServices.stream().noneMatch(s->s.id().equals(serviceRef))) {
-            return Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Upstream service not found"));
+        if (upstreamUpstreamServices.stream().noneMatch(s -> s.id().equals(serviceRef))) {
+            return Mono.error(
+                    new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Upstream service not found")
+            );
         }
 
-        String path = request.getPath().pathWithinApplication().value().substring(serviceRef.length() + 1);
+        String path = request.getPath()
+                .pathWithinApplication()
+                .value()
+                .substring(serviceRef.length() + 1);
 
         String uri = upstreamUpstreamServices.stream()
                 .filter(s -> s.id().equals(serviceRef))
@@ -46,7 +55,7 @@ public class UnitController {
         WebClient.RequestBodySpec requestSpec = webClient.method(method).uri(uri);
 
         if (Objects.equals(method, HttpMethod.POST) || Objects.equals(method, HttpMethod.PUT)) {
-           requestSpec.contentType(Objects.requireNonNull(request.getHeaders().getContentType()));
+            requestSpec.contentType(Objects.requireNonNull(request.getHeaders().getContentType()));
         }
 
         Mono<Mono<ResponseEntity<String>>> monoMono = requestBody.map(body -> requestSpec
