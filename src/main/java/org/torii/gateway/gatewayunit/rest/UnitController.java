@@ -3,7 +3,6 @@ package org.torii.gateway.gatewayunit.rest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer;
 import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer.Factory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
+import org.torii.gateway.gatewayunit.config.LeastConnectionsLoadBalancer;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -37,7 +37,7 @@ public class UnitController {
             @PathVariable String serviceRef
     ) {
 
-        ReactiveLoadBalancer<ServiceInstance> loadBalancer = loadBalancerFactory.getInstance(serviceRef);
+        LeastConnectionsLoadBalancer loadBalancer = (LeastConnectionsLoadBalancer) loadBalancerFactory.getInstance(serviceRef);
 
 
         String path = request.getPath()
@@ -49,9 +49,13 @@ public class UnitController {
         HttpMethod method = request.getMethod();
 
 
-        Flux<Mono<ResponseEntity<String>>> monoFlux = Flux.from(loadBalancer.choose()).map(i -> {
+        Flux<Mono<ResponseEntity<String>>> monoFlux = Flux.from(loadBalancer.choose()).map(serverInstance -> {
 
-            String uri = i.getServer().getUri() + path;
+            ServiceInstance server = serverInstance.getServer();
+
+            String uri = server.getUri() + path;
+
+            log.info("Requesting {} {} to {}", method, uri, server.getHost());
 
             WebClient.RequestBodySpec requestSpec = webClient.method(method).uri(uri);
 
@@ -62,8 +66,9 @@ public class UnitController {
             return requestBody.map(body -> requestSpec
                     .bodyValue(body)
                     .exchangeToMono(response -> response.toEntity(String.class))
+                    .doFinally(signalType -> loadBalancer.connectionClosed(server))
             ).defaultIfEmpty(
-                    requestSpec.exchangeToMono(response -> response.toEntity(String.class))
+                    requestSpec.exchangeToMono(response -> response.toEntity(String.class)).doFinally(signalType -> loadBalancer.connectionClosed(server))
             );
         }).flatMap(Function.identity());
 

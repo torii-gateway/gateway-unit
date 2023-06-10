@@ -1,12 +1,9 @@
 package org.torii.gateway.gatewayunit.config;
 
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cloud.client.DefaultServiceInstance;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer;
-import org.springframework.cloud.loadbalancer.core.RoundRobinLoadBalancer;
 import org.springframework.cloud.loadbalancer.core.ServiceInstanceListSupplier;
-import org.springframework.cloud.loadbalancer.support.SimpleObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -21,15 +18,25 @@ import java.util.stream.Collectors;
 @Configuration
 public class LoadBalancerConfiguration {
 
+
+    @Bean
+    public Map<String, LeastConnectionsLoadBalancer> leastConnectionsLoadBalancerMap(List<UpstreamService> upstreamServices) {
+
+        Map<String, UpstreamServicesListSupplier> serviceInstanceListSupplierMap = upstreamServices.stream().
+                collect(Collectors.toMap(UpstreamService::id, UpstreamServicesListSupplier::new));
+
+        return upstreamServices.stream()
+                .collect(Collectors.toMap(UpstreamService::id, upstreamService -> new LeastConnectionsLoadBalancer(
+                        serviceInstanceListSupplierMap.get(upstreamService.id()))));
+    }
+
     @Bean
     @Primary
-    public ReactiveLoadBalancer.Factory<ServiceInstance> reactiveLoadBalancerFactory(List<UpstreamService> upstreamServices) {
-        Map<String, UpstreamServicesListSupplier> serviceInstanceListSupplierMap = upstreamServices.stream().collect(Collectors.toMap(UpstreamService::id, UpstreamServicesListSupplier::new));
+    public ReactiveLoadBalancer.Factory<ServiceInstance> reactiveLoadBalancerFactory(Map<String, LeastConnectionsLoadBalancer> leastConnectionsLoadBalancerMap) {
         return new ReactiveLoadBalancer.Factory<>() {
             @Override
-            public ReactiveLoadBalancer<ServiceInstance> getInstance(String serviceId) {
-                ObjectProvider<ServiceInstanceListSupplier> supplierProvider = new SimpleObjectProvider<>(serviceInstanceListSupplierMap.get(serviceId));
-                return new RoundRobinLoadBalancer(supplierProvider, serviceId);
+            public LeastConnectionsLoadBalancer getInstance(String serviceId) {
+                return leastConnectionsLoadBalancerMap.get(serviceId);
             }
 
             @Override
