@@ -1,6 +1,7 @@
 package org.torii.gateway.gatewayunit.domain;
 
 
-public record UpstreamService(String id, String host) {
+import java.util.List;
 
+public record UpstreamService(String id, List<Server> servers) {
 }
