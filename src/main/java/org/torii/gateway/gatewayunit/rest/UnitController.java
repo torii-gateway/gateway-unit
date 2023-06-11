@@ -2,13 +2,13 @@ package org.torii.gateway.gatewayunit.rest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.torii.gateway.gatewayunit.domain.RequestData;
+import org.torii.gateway.gatewayunit.exception.Error;
+import org.torii.gateway.gatewayunit.exception.ServiceNotFoundException;
 import org.torii.gateway.gatewayunit.service.RequestService;
 import reactor.core.publisher.Mono;
 
@@ -22,6 +22,12 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
 public class UnitController {
 
     private final RequestService requestService;
+
+    @ResponseStatus(HttpStatus.NOT_FOUND) // 404 status code
+    @ExceptionHandler(ServiceNotFoundException.class)
+    public Mono<ResponseEntity<Error>> handleServiceNotFound(ServiceNotFoundException ex) {
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Error(ex.getMessage())));
+    }
 
     @RequestMapping(path = "/{serviceRef}/**", method = {GET, POST, PUT, DELETE})
     public Mono<ResponseEntity<String>> handleAllMethods(

@@ -18,8 +18,6 @@ public class WebClientConfig {
     public WebClient webClient() {
         //the
         return WebClient.builder()
-                .filter(logRequest())
-                .filter(logResponse())
                 .build();
     }
 
