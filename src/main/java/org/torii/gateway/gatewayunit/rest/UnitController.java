@@ -2,23 +2,17 @@ package org.torii.gateway.gatewayunit.rest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer;
-import org.springframework.cloud.client.loadbalancer.reactive.ReactiveLoadBalancer.Factory;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Flux;
+import org.springframework.web.bind.annotation.*;
+import org.torii.gateway.gatewayunit.domain.RequestData;
+import org.torii.gateway.gatewayunit.exception.Error;
+import org.torii.gateway.gatewayunit.exception.ServiceNotFoundException;
+import org.torii.gateway.gatewayunit.service.RequestService;
 import reactor.core.publisher.Mono;
 
-import java.util.Objects;
-import java.util.function.Function;
+import java.util.Optional;
 
 import static org.springframework.web.bind.annotation.RequestMethod.*;
 
@@ -26,9 +20,14 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
 @Slf4j
 @RequiredArgsConstructor
 public class UnitController {
-    private final WebClient webClient;
 
-    private final Factory<ServiceInstance> loadBalancerFactory;
+    private final RequestService requestService;
+
+    @ResponseStatus(HttpStatus.NOT_FOUND) // 404 status code
+    @ExceptionHandler(ServiceNotFoundException.class)
+    public Mono<ResponseEntity<Error>> handleServiceNotFound(ServiceNotFoundException ex) {
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Error(ex.getMessage())));
+    }
 
     @RequestMapping(path = "/{serviceRef}/**", method = {GET, POST, PUT, DELETE})
     public Mono<ResponseEntity<String>> handleAllMethods(
@@ -37,42 +36,24 @@ public class UnitController {
             @PathVariable String serviceRef
     ) {
 
-        ReactiveLoadBalancer<ServiceInstance> loadBalancer = loadBalancerFactory.getInstance(serviceRef);
+        var requestDataBuilder = RequestData.builder()
+                .serviceRef(serviceRef)
+                .path(extractPath(request, serviceRef))
+                .method(request.getMethod())
+                .headers(request.getHeaders());
 
+        return requestBody
+                .defaultIfEmpty("")
+                .map(body -> requestDataBuilder.body(Optional.ofNullable(body.isEmpty() ? null : body)).build())
+                .flatMap(requestService::sendRequest);
 
-        String path = request.getPath()
+    }
+
+    private static String extractPath(ServerHttpRequest request, String serviceRef) {
+        return request.getPath()
                 .pathWithinApplication()
                 .value()
                 .substring(serviceRef.length() + 1);
-
-
-        HttpMethod method = request.getMethod();
-
-
-        Flux<Mono<ResponseEntity<String>>> monoFlux = Flux.from(loadBalancer.choose()).map(i -> {
-
-            String uri = i.getServer().getUri() + path;
-
-            WebClient.RequestBodySpec requestSpec = webClient.method(method).uri(uri);
-
-            if (Objects.equals(method, HttpMethod.POST) || Objects.equals(method, HttpMethod.PUT)) {
-                requestSpec.contentType(Objects.requireNonNull(request.getHeaders().getContentType()));
-            }
-
-            return requestBody.map(body -> requestSpec
-                    .bodyValue(body)
-                    .exchangeToMono(response -> response.toEntity(String.class))
-            ).defaultIfEmpty(
-                    requestSpec.exchangeToMono(response -> response.toEntity(String.class))
-            );
-        }).flatMap(Function.identity());
-
-
-        return monoFlux.next().flatMap(Function.identity()).onErrorResume(ResponseStatusException.class, ex -> {
-            log.error("Error occurred while handling request", ex);
-            return Mono.just(ResponseEntity.status(ex.getStatusCode()).body(ex.getReason()));
-        });
-
     }
 
 }

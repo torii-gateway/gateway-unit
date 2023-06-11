@@ -10,7 +10,7 @@ import org.springframework.cloud.loadbalancer.support.SimpleObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.torii.gateway.gatewayunit.domain.UpstreamService;
+import org.torii.gateway.gatewayunit.domain.RegisteredService;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -23,8 +23,8 @@ public class LoadBalancerConfiguration {
 
     @Bean
     @Primary
-    public ReactiveLoadBalancer.Factory<ServiceInstance> reactiveLoadBalancerFactory(List<UpstreamService> upstreamServices) {
-        Map<String, UpstreamServicesListSupplier> serviceInstanceListSupplierMap = upstreamServices.stream().collect(Collectors.toMap(UpstreamService::id, UpstreamServicesListSupplier::new));
+    public ReactiveLoadBalancer.Factory<ServiceInstance> reactiveLoadBalancerFactory(List<RegisteredService> registeredServices) {
+        Map<String, UpstreamServicesListSupplier> serviceInstanceListSupplierMap = registeredServices.stream().collect(Collectors.toMap(RegisteredService::id, UpstreamServicesListSupplier::new));
         return new ReactiveLoadBalancer.Factory<>() {
             @Override
             public ReactiveLoadBalancer<ServiceInstance> getInstance(String serviceId) {
@@ -50,9 +50,9 @@ public class LoadBalancerConfiguration {
         private final List<ServiceInstance> instances;
         private final String serviceId;
 
-        public UpstreamServicesListSupplier(UpstreamService upstreamService) {
-            this.serviceId = upstreamService.id();
-            this.instances = upstreamService.servers().stream().map(server -> new DefaultServiceInstance(
+        public UpstreamServicesListSupplier(RegisteredService registeredService) {
+            this.serviceId = registeredService.id();
+            this.instances = registeredService.registeredServiceConfigurations().getServers().stream().map(server -> new DefaultServiceInstance(
                     UUID.randomUUID().toString(),
                     this.serviceId,
                     server.host(),
