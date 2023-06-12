@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Repository;
-import org.torii.gateway.gatewayunit.domain.ServiceResponse;
+import org.torii.gateway.gatewayunit.domain.ResponseData;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -14,9 +14,9 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class CacheRepository {
 
-    private final ReactiveRedisTemplate<String, ServiceResponse> reactiveRedisTemplate;
+    private final ReactiveRedisTemplate<String, ResponseData> reactiveRedisTemplate;
 
-    public Mono<Boolean> save(String key, ServiceResponse value , int ttl) {
+    public Mono<Boolean> save(String key, ResponseData value , int ttl) {
         return reactiveRedisTemplate
                 .opsForValue()
                 .set(key, value)
@@ -27,7 +27,7 @@ public class CacheRepository {
                 });
     }
 
-    public Mono<ServiceResponse> get(String key) {
+    public Mono<ResponseData> get(String key) {
         return reactiveRedisTemplate
                 .opsForValue()
                 .get(key)

@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.torii.gateway.gatewayunit.repository.CacheRepository;
-import org.torii.gateway.gatewayunit.domain.ServiceResponse;
+import org.torii.gateway.gatewayunit.domain.ResponseData;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -15,7 +15,7 @@ public class CacheService {
 
     private final CacheRepository cacheRepository;
 
-    public Mono<ServiceResponse> save(String key, ServiceResponse value , int ttl) {
+    public Mono<ResponseData> save(String key, ResponseData value , int ttl) {
         try {
             return cacheRepository
                     .save(key, value, ttl)
@@ -33,7 +33,7 @@ public class CacheService {
         return Mono.just(value);
     }
 
-    public Mono<ServiceResponse> get(String key) {
+    public Mono<ResponseData> get(String key) {
         try {
             return cacheRepository
                     .get(key)
