@@ -3,7 +3,10 @@ package org.torii.gateway.gatewayunit.domain;
 
 import java.util.Objects;
 
-public record RegisteredService(String id, RegisteredServiceConfiguration registeredServiceConfigurations) {
+public record RegisteredService(
+        String id,
+        RegisteredServiceConfiguration registeredServiceConfigurations
+) {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

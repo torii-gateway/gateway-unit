@@ -19,6 +19,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@RequestMapping("/services")
 public class UnitController {
 
     private final RequestService requestService;
