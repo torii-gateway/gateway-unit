@@ -19,18 +19,6 @@ public class RegistryService {
     private final LoadBalancerService loadBalancerService;
 
     public RegistryService(LoadBalancerService loadBalancerService) {
-
-        var server1 = new RegisteredServiceConfiguration.Server("http", "localhost", 8081);
-        var server2 = new RegisteredServiceConfiguration.Server("http", "localhost", 8082);
-
-        registeredServices.put(
-                "s1", new RegisteredService("s1", RegisteredServiceConfiguration.builder()
-                        .allowCache(false)
-                        .server(server1)
-                        .server(server2)
-                        .build())
-        );
-
         this.loadBalancerService = loadBalancerService;
     }
 
@@ -58,6 +46,7 @@ public class RegistryService {
     }
 
     public Mono<RegisteredService> delete(String id) {
+
         return Mono.justOrEmpty(registeredServices.remove(id));
     }
 
@@ -68,6 +57,5 @@ public class RegistryService {
         }).flatMap(Function.identity()).doOnNext(
                 registeredService -> loadBalancerService.refresh(Mono.just(registeredService))
         );
-
     }
 }

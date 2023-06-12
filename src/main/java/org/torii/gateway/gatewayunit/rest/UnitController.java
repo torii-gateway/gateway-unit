@@ -19,6 +19,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.*;
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@RequestMapping("/services")
 public class UnitController {
 
     private final RequestService requestService;
@@ -53,7 +54,7 @@ public class UnitController {
         return request.getPath()
                 .pathWithinApplication()
                 .value()
-                .substring(serviceRef.length() + 1);
+                .substring(("services/" + serviceRef).length() + 1);
     }
 
 }
