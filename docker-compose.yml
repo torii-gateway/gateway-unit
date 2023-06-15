@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+    app1:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - maven-repo:/root/.m2
+        ports:
+            - "8080:8080"
+
+volumes:
+    maven-repo:
